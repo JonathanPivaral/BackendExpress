@@ -49,7 +49,119 @@ const loginUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+// Deposito de cuenta
+
+const deposit = async (req, res) => {
+    try {
+      const { numeroCuenta, monto, descripcion } = req.body;
+  
+      await connectToDatabase();
+  
+      const cuentaCheck = await sql.query`SELECT 1 FROM CuentasBancarias WHERE NumeroCuenta = ${numeroCuenta}`;
+  
+      if (cuentaCheck.recordset.length === 0) {
+        return res.status(404).json({ error: 'Cuenta no encontrada' });
+      }
+  
+      const result = await sql.query`
+        EXEC Deposito @numeroCuenta = ${numeroCuenta}, @monto = ${monto}, @descripcion = ${descripcion}`;
+  
+      res.status(200).json({ message: 'Depósito realizado con éxito' });
+    } catch (err) {
+      console.error("Error al realizar depósito:", err);
+      res.status(500).json({ error: err.message });
+    }
+  };
+
+// Retiro de cuenta
+
+const withdraw = async (req, res) => {
+    try {
+      const { numeroCuenta, monto, descripcion } = req.body;
+  
+      await connectToDatabase();
+  
+      const cuentaCheck = await sql.query`SELECT 1 FROM CuentasBancarias WHERE NumeroCuenta = ${numeroCuenta}`;
+  
+      if (cuentaCheck.recordset.length === 0) {
+        return res.status(404).json({ error: 'Cuenta no encontrada' });
+      }
+  
+      const result = await sql.query`
+        EXEC Retiro @numeroCuenta = ${numeroCuenta}, @monto = ${monto}, @descripcion = ${descripcion}`;
+  
+      res.status(200).json({ message: 'Retiro realizado con éxito' });
+    } catch (err) {
+      console.error("Error al realizar retiro:", err);
+      res.status(500).json({ error: err.message });
+    }
+  };
+  
+
+// Transferencias
+
+const transfer = async (req, res) => {
+    try {
+      const { cuentaOrigen, cuentaDestino, monto, descripcion } = req.body;
+  
+      await connectToDatabase();
+  
+      const origenCheck = await sql.query`SELECT 1 FROM CuentasBancarias WHERE NumeroCuenta = ${cuentaOrigen}`;
+      const destinoCheck = await sql.query`SELECT 1 FROM CuentasBancarias WHERE NumeroCuenta = ${cuentaDestino}`;
+  
+      if (origenCheck.recordset.length === 0 || destinoCheck.recordset.length === 0) {
+        return res.status(404).json({ error: 'Cuenta origen o destino no encontrada' });
+      }
+  
+      const result = await sql.query`
+        EXEC Transferencia @cuentaOrigen = ${cuentaOrigen}, @cuentaDestino = ${cuentaDestino}, @monto = ${monto}, @descripcion = ${descripcion}`;
+  
+      res.status(200).json({ message: 'Transferencia realizada con éxito' });
+    } catch (err) {
+      console.error("Error al realizar transferencia:", err);
+      res.status(500).json({ error: err.message });
+    }
+  };
+
+//cuenta bancaria
+
+const createBankAccount = async (req, res) => {
+    try {
+      const { usuarioID, numeroCuenta, saldoInicial = 0 } = req.body;
+  
+      await connectToDatabase();
+  
+      // Verificar si el usuario existe
+      const userCheck = await sql.query`SELECT 1 FROM Usuarios WHERE UsuarioID = ${usuarioID}`;
+  
+      if (userCheck.recordset.length === 0) {
+        return res.status(404).json({ error: 'Usuario no encontrado' });
+      }
+  
+      // Crear la cuenta bancaria
+      const result = await sql.query`
+        INSERT INTO CuentasBancarias (UsuarioID, NumeroCuenta, Saldo)
+        OUTPUT INSERTED.CuentaID
+        VALUES (${usuarioID}, ${numeroCuenta}, ${saldoInicial})`;
+  
+      if (result.recordset.length === 0) {
+        return res.status(500).json({ error: 'No se pudo crear la cuenta bancaria' });
+      }
+  
+      res.status(201).json({ message: 'Cuenta bancaria creada', cuentaID: result.recordset[0].CuentaID });
+    } catch (err) {
+      console.error("Error al crear cuenta bancaria:", err);
+      res.status(500).json({ error: err.message });
+    }
+  };
+
 module.exports = {
   createUser,
-  loginUser
+  loginUser,
+  deposit,
+  withdraw,
+  transfer,
+  createBankAccount
 };
