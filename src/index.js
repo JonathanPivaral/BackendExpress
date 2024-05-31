@@ -1,28 +1,30 @@
+
 const express = require('express');
 const { connectToDatabase } = require('./db');
+const routes = require('./routes');
+
 const app = express();
-const port = 3000;
-
-// Middleware para parsear JSON
 app.use(express.json());
-
-connectToDatabase();
-
-app.get('/testdb', async (req, res) => {
-    try {
-      const result = await sql.query `SELECT 1 AS number`;
-      res.json(result.recordset);
-    } catch (err) {
-      res.status(500).send('Error al consultar la base de datos');
-    }
-  });
+const PORT = process.env.PORT || 3000;
 
 // Ruta de prueba
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
-// Inicia el servidor
-app.listen(port, () => {
-  console.log(`Servidor escuchando en http://localhost:${port}`);
+app.use('/api', routes);
+
+
+app.use((req, res, next) => {
+  res.status(404).json({
+    message: "El endpoint solicitado no existe."
+  });
 });
+
+connectToDatabase();
+
+
+
+app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));
+
+
